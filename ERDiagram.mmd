@@ -1,0 +1,48 @@
+erDiagram
+    POWER_NODE_MASTER {
+        string node_id PK
+        string place_name
+        float lat
+        float lng
+        enum place_type
+        timestamp created_at
+    }
+
+    LIVE_GRID_HEALTH_STATE {
+        string node_id FK
+        enum status
+        int priority_level
+        timestamp last_heartbeat
+        string incident_id
+        enum incident_verification
+        timestamp unverified_since
+        enum operator_decision
+        timestamp updated_at
+    }
+
+    DISPATCH_INTELLIGENCE_RECORDS {
+        string record_id PK
+        string node_id FK
+        string driver_id
+        string staff_id
+        enum action_type
+        enum dispatch_status
+        int retry_count
+        timestamp last_retry_at
+        timestamp action_timestamp
+        string notes
+    }
+
+    MANUAL_VERIFICATION_LOG {
+        string log_id PK
+        string node_id FK
+        enum verification_type
+        enum decision
+        string operator_id
+        string reason
+        timestamp decided_at
+    }
+
+    POWER_NODE_MASTER ||--|| LIVE_GRID_HEALTH_STATE : "มีสถานะปัจจุบัน"
+    POWER_NODE_MASTER ||--o{ DISPATCH_INTELLIGENCE_RECORDS : "มีประวัติการสั่งงาน"
+    POWER_NODE_MASTER ||--o{ MANUAL_VERIFICATION_LOG : "มีประวัติการยืนยันโดยเจ้าหน้าที่"
