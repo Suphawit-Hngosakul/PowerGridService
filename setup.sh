@@ -15,6 +15,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$SCRIPT_DIR/main/infra"
 SQL_FILE="$SCRIPT_DIR/main/sql/schema.sql"
 
+if ! command -v tofu &>/dev/null; then
+  echo "=== Installing OpenTofu ==="
+  curl -fsSL https://get.opentofu.org/install-opentofu.sh | sudo bash -s -- --install-method rpm
+fi
+
 echo "=== [1/4] Terraform: init + apply ==="
 cd "$INFRA_DIR"
 tofu init -input=false
@@ -22,8 +27,15 @@ tofu apply -auto-approve \
   -var="db_password=$DB_PASSWORD" \
   -var="incident_service_url=$INCIDENT_SERVICE_URL"
 
-RDS_ENDPOINT=$(tofu output -raw rds_endpoint)
-API_URL=$(tofu output -raw api_url)
+RDS_ENDPOINT=$(tofu output -raw rds_endpoint 2>/dev/null | grep -v '^\(╷\|│\|╵\)' | tr -d '[:space:]')
+API_URL=$(tofu output -raw api_url 2>/dev/null | grep -v '^\(╷\|│\|╵\)' | tr -d '[:space:]')
+
+if [ -z "$RDS_ENDPOINT" ] || [[ "$RDS_ENDPOINT" == *"Warning"* ]] || [[ "$RDS_ENDPOINT" == *"No outputs"* ]]; then
+  echo ""
+  echo "ERROR: ไม่สามารถดึง RDS endpoint จาก Terraform state ได้"
+  echo "ลอง: cd main/infra && tofu output"
+  exit 1
+fi
 
 echo ""
 echo "=== [2/4] Install PostgreSQL client ==="

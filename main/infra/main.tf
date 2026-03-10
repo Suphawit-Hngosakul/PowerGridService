@@ -167,7 +167,6 @@ resource "aws_lambda_function" "check_incident" {
       DB_NAME                = "powergrid"
       DB_USER                = var.db_username
       DB_PASSWORD            = var.db_password
-      INCIDENT_SERVICE_MOCK  = var.incident_service_mock
       INCIDENT_SERVICE_URL   = var.incident_service_url
       INCIDENT_TIMEOUT_SEC   = "5"
       INCIDENT_MAX_RETRIES   = "1"
