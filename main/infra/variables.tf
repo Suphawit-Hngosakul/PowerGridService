@@ -20,3 +20,13 @@ variable "incident_service_url" {
   description = "Base URL of the external Incident Service API Gateway"
   type        = string
 }
+
+variable "driver_service_url" {
+  description = "Base URL of the external Driver Service API Gateway"
+  type        = string
+}
+
+variable "staff_service_url" {
+  description = "Base URL of the external Staff Service API Gateway"
+  type        = string
+}

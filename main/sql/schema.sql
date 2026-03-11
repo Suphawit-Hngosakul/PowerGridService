@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS live_grid_health_state (
 CREATE TABLE IF NOT EXISTS dispatch_intelligence_records (
     record_id        VARCHAR(60) PRIMARY KEY,
     node_id          VARCHAR(20) NOT NULL REFERENCES power_node_master(node_id),
-    staff_id         VARCHAR(20) NOT NULL,
+    driver_id        VARCHAR(20),
+    staff_id         VARCHAR(20),
     action_type      VARCHAR(20) NOT NULL CHECK (action_type IN ('DISPATCHED', 'UNDER_MAINTENANCE', 'RESOLVED')),
     dispatch_status  VARCHAR(20) NOT NULL CHECK (dispatch_status IN ('WAITING', 'ASSIGNED', 'RESOLVED')),
     action_timestamp TIMESTAMP NOT NULL,

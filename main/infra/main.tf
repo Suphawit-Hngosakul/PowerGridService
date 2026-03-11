@@ -280,12 +280,148 @@ resource "aws_lambda_permission" "apigw_check_incident" {
   source_arn    = "${aws_api_gateway_rest_api.powergrid_api.execution_arn}/*/*"
 }
 
+# ─────────────────────────────────────────
+# Lambda Function 4 — dispatch resources
+# ─────────────────────────────────────────
+
+data "archive_file" "function4_zip" {
+  type        = "zip"
+  source_file = "${path.module}/../lambda/fn4_dispatch_resources.py"
+  output_path = "${path.module}/builds/function4.zip"
+}
+
+resource "aws_lambda_function" "dispatch_resources" {
+  filename         = data.archive_file.function4_zip.output_path
+  function_name    = "powergrid-dispatch-resources"
+  role             = data.aws_iam_role.lambda_role.arn
+  handler          = "fn4_dispatch_resources.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 30
+  source_code_hash = data.archive_file.function4_zip.output_base64sha256
+
+  layers = [aws_lambda_layer_version.psycopg2.arn]
+
+  environment {
+    variables = {
+      DB_HOST            = aws_db_instance.powergrid_db.address
+      DB_PORT            = "5432"
+      DB_NAME            = "powergrid"
+      DB_USER            = var.db_username
+      DB_PASSWORD        = var.db_password
+      DRIVER_SERVICE_URL = var.driver_service_url
+      STAFF_SERVICE_URL  = var.staff_service_url
+    }
+  }
+
+  tags = { Project = "powergrid-main" }
+}
+
+resource "aws_api_gateway_resource" "dispatch" {
+  rest_api_id = aws_api_gateway_rest_api.powergrid_api.id
+  parent_id   = aws_api_gateway_resource.node_id.id
+  path_part   = "dispatch"
+}
+
+resource "aws_api_gateway_method" "post_dispatch" {
+  rest_api_id   = aws_api_gateway_rest_api.powergrid_api.id
+  resource_id   = aws_api_gateway_resource.dispatch.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_dispatch" {
+  rest_api_id             = aws_api_gateway_rest_api.powergrid_api.id
+  resource_id             = aws_api_gateway_resource.dispatch.id
+  http_method             = aws_api_gateway_method.post_dispatch.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.dispatch_resources.invoke_arn
+}
+
+resource "aws_lambda_permission" "apigw_dispatch" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.dispatch_resources.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.powergrid_api.execution_arn}/*/*"
+}
+
+# ─────────────────────────────────────────
+# Demo Utility — reset node
+# ─────────────────────────────────────────
+
+data "archive_file" "demo_reset_zip" {
+  type        = "zip"
+  source_file = "${path.module}/../lambda/demo_reset_node.py"
+  output_path = "${path.module}/builds/demo_reset.zip"
+}
+
+resource "aws_lambda_function" "demo_reset" {
+  filename         = data.archive_file.demo_reset_zip.output_path
+  function_name    = "powergrid-demo-reset"
+  role             = data.aws_iam_role.lambda_role.arn
+  handler          = "demo_reset_node.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 10
+  source_code_hash = data.archive_file.demo_reset_zip.output_base64sha256
+
+  layers = [aws_lambda_layer_version.psycopg2.arn]
+
+  environment {
+    variables = {
+      DB_HOST     = aws_db_instance.powergrid_db.address
+      DB_PORT     = "5432"
+      DB_NAME     = "powergrid"
+      DB_USER     = var.db_username
+      DB_PASSWORD = var.db_password
+    }
+  }
+
+  tags = { Project = "powergrid-main" }
+}
+
+resource "aws_api_gateway_resource" "reset" {
+  rest_api_id = aws_api_gateway_rest_api.powergrid_api.id
+  parent_id   = aws_api_gateway_resource.node_id.id
+  path_part   = "reset"
+}
+
+resource "aws_api_gateway_method" "post_reset" {
+  rest_api_id   = aws_api_gateway_rest_api.powergrid_api.id
+  resource_id   = aws_api_gateway_resource.reset.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "post_reset" {
+  rest_api_id             = aws_api_gateway_rest_api.powergrid_api.id
+  resource_id             = aws_api_gateway_resource.reset.id
+  http_method             = aws_api_gateway_method.post_reset.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.demo_reset.invoke_arn
+}
+
+resource "aws_lambda_permission" "apigw_demo_reset" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.demo_reset.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.powergrid_api.execution_arn}/*/*"
+}
+
+# ─────────────────────────────────────────
+# Deployment
+# ─────────────────────────────────────────
+
 resource "aws_api_gateway_deployment" "powergrid" {
   rest_api_id = aws_api_gateway_rest_api.powergrid_api.id
   depends_on = [
     aws_api_gateway_integration.get_nodes,
     aws_api_gateway_integration.post_heartbeat,
     aws_api_gateway_integration.post_check_incident,
+    aws_api_gateway_integration.post_dispatch,
+    aws_api_gateway_integration.post_reset,
   ]
 }
 

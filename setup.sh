@@ -3,13 +3,13 @@ set -e
 
 # ─── ตรวจสอบ argument ─────────────────────────────────────────────────────────
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: ./setup.sh <db_password> <incident_service_url>"
+  echo "Usage: ./setup.sh <db_password> <stub_service_url>"
   echo "Example: ./setup.sh Postgres123 https://xxxx.execute-api.us-east-1.amazonaws.com/prod"
   exit 1
 fi
 
 DB_PASSWORD="$1"
-INCIDENT_SERVICE_URL="$2"
+STUB_SERVICE_URL="$2"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$SCRIPT_DIR/main/infra"
@@ -25,7 +25,9 @@ cd "$INFRA_DIR"
 tofu init -input=false
 tofu apply -auto-approve \
   -var="db_password=$DB_PASSWORD" \
-  -var="incident_service_url=$INCIDENT_SERVICE_URL"
+  -var="incident_service_url=$STUB_SERVICE_URL" \
+  -var="driver_service_url=$STUB_SERVICE_URL" \
+  -var="staff_service_url=$STUB_SERVICE_URL"
 
 RDS_ENDPOINT=$(tofu output -raw rds_endpoint 2>/dev/null | grep -v '^\(╷\|│\|╵\)' | tr -d '[:space:]')
 API_URL=$(tofu output -raw api_url 2>/dev/null | grep -v '^\(╷\|│\|╵\)' | tr -d '[:space:]')
@@ -54,10 +56,13 @@ PGPASSWORD="$DB_PASSWORD" psql \
 echo ""
 echo "=== [4/4] Setup complete ==="
 echo ""
-echo "  RDS Endpoint : $RDS_ENDPOINT"
-echo "  API Base URL : $API_URL"
+echo "  RDS Endpoint     : $RDS_ENDPOINT"
+echo "  API Base URL     : $API_URL"
+echo "  Stub Service URL : $STUB_SERVICE_URL"
 echo ""
 echo "Endpoints:"
-echo "  POST $API_URL/nodes/{node_id}/heartbeat"
-echo "  GET  $API_URL/nodes"
-echo "  POST $API_URL/nodes/{node_id}/check-incident"
+echo "  POST $API_URL/nodes/{node_id}/heartbeat        (fn1: detect outage)"
+echo "  GET  $API_URL/nodes                             (fn2: get nodes)"
+echo "  POST $API_URL/nodes/{node_id}/check-incident    (fn3: check incident)"
+echo "  POST $API_URL/nodes/{node_id}/dispatch           (fn4: dispatch resources)"
+echo "  POST $API_URL/nodes/{node_id}/reset              (demo: reset node)"

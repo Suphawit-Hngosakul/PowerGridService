@@ -50,7 +50,19 @@ def lambda_handler(event, context):
         place_type, current_status, last_heartbeat = row
 
         if current_status == "OUTAGE_DETECTED":
-            return response(409, {"error": "Node is already OUTAGE_DETECTED", "node_id": node_id})
+            # อัพเดต last_heartbeat แต่ไม่เปลี่ยน status (ยังคง OUTAGE_DETECTED)
+            cur.execute("""
+                UPDATE live_grid_health_state
+                SET last_heartbeat = %s, updated_at = %s
+                WHERE node_id = %s
+            """, (now, now, node_id))
+            conn.commit()
+            cur.close(); conn.close()
+            return response(200, {
+                "node_id": node_id, "status": "OUTAGE_DETECTED",
+                "last_heartbeat": now.isoformat(),
+                "message": "Heartbeat recorded; node remains OUTAGE_DETECTED"
+            })
 
         cur.execute("""
             UPDATE live_grid_health_state

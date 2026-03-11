@@ -1,6 +1,7 @@
 import json
 import os
 import psycopg2
+from datetime import timezone
 
 DB_HOST     = os.environ["DB_HOST"]
 DB_PORT     = os.environ.get("DB_PORT", "5432")
@@ -67,6 +68,14 @@ def lambda_handler(event, context):
         for row in rows:
             node_id, place_name, place_type, lat, lng, status, priority_level, \
             last_heartbeat, incident_id, incident_verification, updated_at = row
+
+            # DB ใช้ TIMESTAMP (ไม่มี timezone) แต่เก็บเป็น UTC
+            # ต้อง attach timezone เพื่อให้ browser ตีความถูกต้อง
+            if last_heartbeat and last_heartbeat.tzinfo is None:
+                last_heartbeat = last_heartbeat.replace(tzinfo=timezone.utc)
+            if updated_at and updated_at.tzinfo is None:
+                updated_at = updated_at.replace(tzinfo=timezone.utc)
+
             nodes.append({
                 "node_id": node_id, "place_name": place_name, "place_type": place_type,
                 "geo_location": {"lat": float(lat), "lng": float(lng)},
