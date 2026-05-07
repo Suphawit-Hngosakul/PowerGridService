@@ -1,0 +1,12 @@
+{
+  "name": "@powergrid/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "app.js",
+  "dependencies": {
+    "@powergrid/db": "*",
+    "@powergrid/dispatch": "*",
+    "express": "^4.19.2",
+    "serverless-http": "^4.0.0"
+  }
+}

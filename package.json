@@ -1,0 +1,22 @@
+{
+  "name": "powergrid-service",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Microservices for power grid disaster monitoring (CS366)",
+  "workspaces": [
+    "shared/*",
+    "services/*"
+  ],
+  "scripts": {
+    "migrate": "node scripts/migrate.js",
+    "build": "node scripts/build-lambdas.js",
+    "detect:once": "node services/detect/local.js",
+    "api:dev": "node services/api/local.js",
+    "up": "docker-compose up -d",
+    "down": "docker-compose down"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.24.2"
+  }
+}
