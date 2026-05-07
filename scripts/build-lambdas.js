@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 
-// Build script — bundles each Lambda handler + workspace deps into a single
-// CommonJS file, then zips it for deployment via tofu/terraform.
-//
-// AWS SDK v3 ships with the nodejs20.x Lambda runtime, so it is marked
-// `external` to keep zips small.
-
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');

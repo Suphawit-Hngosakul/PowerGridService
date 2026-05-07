@@ -6,8 +6,11 @@ let pool;
 
 function getPool() {
   if (!pool) {
+    const connectionString = process.env.DATABASE_URL || '';
+    const isLocal = /@(localhost|127\.0\.0\.1|host\.docker\.internal)[:/]/.test(connectionString);
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString,
+      ssl: isLocal ? false : { rejectUnauthorized: false },
       max: Number(process.env.DB_POOL_MAX || 5),
       idleTimeoutMillis: 10_000,
     });

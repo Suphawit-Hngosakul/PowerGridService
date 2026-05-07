@@ -6,7 +6,12 @@ const path = require('path');
 const { Pool } = require('pg');
 
 async function main() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const connectionString = process.env.DATABASE_URL || '';
+  const isLocal = /@(localhost|127\.0\.0\.1|host\.docker\.internal)[:/]/.test(connectionString);
+  const pool = new Pool({
+    connectionString,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
+  });
   const sqlDir = path.join(__dirname, '..', 'sql');
   const files = fs.readdirSync(sqlDir).filter((f) => f.endsWith('.sql')).sort();
 

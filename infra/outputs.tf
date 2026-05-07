@@ -3,7 +3,7 @@ output "rds_endpoint" {
 }
 
 output "api_endpoint" {
-  value = aws_apigatewayv2_stage.api.invoke_url
+  value = aws_api_gateway_stage.api.invoke_url
 }
 
 output "database_url" {
