@@ -6,6 +6,7 @@
   "dependencies": {
     "@powergrid/db": "*",
     "@powergrid/dispatch": "*",
+    "@aws-sdk/client-iot-data-plane": "^3.658.0",
     "express": "^4.19.2",
     "serverless-http": "^4.0.0"
   }

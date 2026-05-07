@@ -17,6 +17,10 @@ data "aws_iam_role" "lab" {
   name = "LabRole"
 }
 
+data "aws_iot_endpoint" "data" {
+  endpoint_type = "iot:Data-ATS"
+}
+
 resource "aws_db_subnet_group" "main" {
   name       = "${local.name}-db"
   subnet_ids = var.subnet_ids
@@ -100,39 +104,43 @@ locals {
     INCIDENT_IMPACT_ZONE_URL  = var.incident_impact_zone_url
     PRIORITY_CASE_SERVICE_URL = var.priority_case_service_url
     OUTBOUND_SHARED_SECRET    = var.outbound_shared_secret
+    IOT_ENDPOINT              = data.aws_iot_endpoint.data.endpoint_address
   }
 }
 
 resource "aws_lambda_function" "ingest" {
-  function_name = "${local.name}-ingest"
-  filename      = "${path.module}/build/ingest.zip"
-  handler       = "handler.handler"
-  runtime       = "nodejs20.x"
-  role          = data.aws_iam_role.lab.arn
-  timeout       = 10
-  memory_size   = 256
+  function_name    = "${local.name}-ingest"
+  filename         = "${path.module}/build/ingest.zip"
+  source_code_hash = filebase64sha256("${path.module}/build/ingest.zip")
+  handler          = "handler.handler"
+  runtime          = "nodejs20.x"
+  role             = data.aws_iam_role.lab.arn
+  timeout          = 10
+  memory_size      = 256
   environment { variables = local.common_env }
 }
 
 resource "aws_lambda_function" "detect" {
-  function_name = "${local.name}-detect"
-  filename      = "${path.module}/build/detect.zip"
-  handler       = "handler.handler"
-  runtime       = "nodejs20.x"
-  role          = data.aws_iam_role.lab.arn
-  timeout       = 30
-  memory_size   = 256
+  function_name    = "${local.name}-detect"
+  filename         = "${path.module}/build/detect.zip"
+  source_code_hash = filebase64sha256("${path.module}/build/detect.zip")
+  handler          = "handler.handler"
+  runtime          = "nodejs20.x"
+  role             = data.aws_iam_role.lab.arn
+  timeout          = 30
+  memory_size      = 256
   environment { variables = local.common_env }
 }
 
 resource "aws_lambda_function" "dispatch" {
-  function_name = "${local.name}-dispatch"
-  filename      = "${path.module}/build/dispatch.zip"
-  handler       = "handler.handler"
-  runtime       = "nodejs20.x"
-  role          = data.aws_iam_role.lab.arn
-  timeout       = 30
-  memory_size   = 256
+  function_name    = "${local.name}-dispatch"
+  filename         = "${path.module}/build/dispatch.zip"
+  source_code_hash = filebase64sha256("${path.module}/build/dispatch.zip")
+  handler          = "handler.handler"
+  runtime          = "nodejs20.x"
+  role             = data.aws_iam_role.lab.arn
+  timeout          = 30
+  memory_size      = 256
   environment { variables = local.common_env }
 }
 
@@ -143,13 +151,14 @@ resource "aws_lambda_event_source_mapping" "dispatch_sqs" {
 }
 
 resource "aws_lambda_function" "confirm" {
-  function_name = "${local.name}-confirm"
-  filename      = "${path.module}/build/confirm.zip"
-  handler       = "handler.handler"
-  runtime       = "nodejs20.x"
-  role          = data.aws_iam_role.lab.arn
-  timeout       = 15
-  memory_size   = 256
+  function_name    = "${local.name}-confirm"
+  filename         = "${path.module}/build/confirm.zip"
+  source_code_hash = filebase64sha256("${path.module}/build/confirm.zip")
+  handler          = "handler.handler"
+  runtime          = "nodejs20.x"
+  role             = data.aws_iam_role.lab.arn
+  timeout          = 15
+  memory_size      = 256
   environment { variables = local.common_env }
 }
 
@@ -193,13 +202,14 @@ resource "aws_lambda_permission" "scheduler_invoke" {
 }
 
 resource "aws_lambda_function" "api" {
-  function_name = "${local.name}-api"
-  filename      = "${path.module}/build/api.zip"
-  handler       = "handler.handler"
-  runtime       = "nodejs20.x"
-  role          = data.aws_iam_role.lab.arn
-  timeout       = 30
-  memory_size   = 256
+  function_name    = "${local.name}-api"
+  filename         = "${path.module}/build/api.zip"
+  source_code_hash = filebase64sha256("${path.module}/build/api.zip")
+  handler          = "handler.handler"
+  runtime          = "nodejs20.x"
+  role             = data.aws_iam_role.lab.arn
+  timeout          = 30
+  memory_size      = 256
   environment { variables = local.common_env }
 }
 

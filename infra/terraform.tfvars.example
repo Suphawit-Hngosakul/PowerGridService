@@ -1,0 +1,8 @@
+db_password              = 
+subnet_ids               = ["subnet-1", "subnet-2"]
+lambda_security_group_id =
+
+incident_impact_zone_url     =
+priority_case_service_url    =
+outbound_shared_secret       =
+resource_completed_queue_arn =

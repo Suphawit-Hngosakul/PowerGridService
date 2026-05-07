@@ -27,9 +27,10 @@ async function buildOne(svc) {
     format: 'cjs',
     outfile: path.join(outdir, 'handler.js'),
     external: [
-      '@aws-sdk/*',     // provided by Lambda runtime
-      'pg-native',      // optional native binding for `pg`, not used
-      'cloudflare:*',   // pg's Cloudflare Workers shim — runtime detect, safe to drop
+      '@aws-sdk/client-sns',
+      '@aws-sdk/client-sqs',
+      'pg-native',
+      'cloudflare:*',
     ],
     logLevel: 'warning',
   });
@@ -42,13 +43,11 @@ async function buildOne(svc) {
 
 function zipDir(srcDir, zipPath) {
   if (process.platform === 'win32') {
-    // Windows fallback — useful for sanity-checking on dev machines.
     execSync(
       `powershell -NoProfile -Command "Compress-Archive -Path '${srcDir}\\*' -DestinationPath '${zipPath}' -Force"`,
       { stdio: 'inherit' }
     );
   } else {
-    // Cloud9 / Linux / Mac
     execSync(`cd "${srcDir}" && zip -q -r "${zipPath}" .`, { stdio: 'inherit' });
   }
 }

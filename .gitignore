@@ -12,3 +12,4 @@ build/
 .terraform.lock.hcl
 *.zip
 coverage/
+A1.md
