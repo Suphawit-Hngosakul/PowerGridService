@@ -80,7 +80,7 @@ async function detect() {
             NULL::timestamptz AS last_heartbeat_at
        FROM suspected
      UNION ALL
-     SELECT 'outage', node_id, place_type, last_heartbeat_at FROM outaged`,
+     SELECT 'outage'::text, node_id, place_type::text, last_heartbeat_at FROM outaged`,
     [SUSPECT_AFTER, OUTAGE_AFTER]
   );
 
