@@ -1,437 +1,520 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PowerGrid Demo Console</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
-  .b-online   { background:#dcfce7; color:#166534; }
-  .b-suspect  { background:#fef3c7; color:#92400e; }
-  .b-outage   { background:#fee2e2; color:#991b1b; }
-  .b-pending  { background:#e5e7eb; color:#374151; }
-  .b-dispatched { background:#dbeafe; color:#1e40af; }
-  .b-confirmed  { background:#dcfce7; color:#166534; }
-  .b-rejected   { background:#fee2e2; color:#991b1b; }
-  .b-resolved   { background:#dcfce7; color:#166534; }
-  .b-open       { background:#fef3c7; color:#92400e; }
-  .row-dim td { color: #9ca3af; }
-  .pulse { animation: pulse 1.4s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-</style>
-</head>
-<body class="bg-slate-50 text-slate-800">
-<div class="max-w-7xl mx-auto p-4 space-y-4">
-
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold">⚡ PowerGrid Demo Console</h1>
-    <div class="flex items-center gap-2">
-      <input id="apiUrl" type="text" placeholder="https://abc.execute-api.us-east-1.amazonaws.com/v1"
-             class="border rounded px-2 py-1 text-sm w-[420px]" />
-      <button onclick="saveApiUrl()" class="bg-slate-800 text-white px-3 py-1 rounded text-sm">Save</button>
-      <span id="health" class="text-sm text-slate-500">—</span>
-    </div>
-  </div>
-
-  <!-- Simulator -->
-  <section class="bg-white shadow rounded p-4">
-    <div class="flex justify-between items-center mb-3">
-      <h2 class="font-semibold">🛰️ Heartbeat Simulator</h2>
-      <span class="text-xs text-slate-500">runs in this browser tab. close tab → all simulators stop.</span>
-    </div>
-
-    <div class="flex flex-wrap gap-2 items-end mb-3">
-      <div>
-        <label class="block text-xs text-slate-500">Node ID</label>
-        <input id="newNodeId" type="text" value="node-bkk-104" class="border rounded px-2 py-1 text-sm w-44" />
-      </div>
-      <div>
-        <label class="block text-xs text-slate-500">Interval (s)</label>
-        <input id="newInterval" type="number" value="10" min="1" class="border rounded px-2 py-1 text-sm w-20" />
-      </div>
-      <div>
-        <label class="block text-xs text-slate-500">Voltage</label>
-        <input id="newVoltage" type="number" value="220" step="0.1" class="border rounded px-2 py-1 text-sm w-24" />
-      </div>
-      <button onclick="addSimulator()" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm">▶ Start</button>
-      <button onclick="sendOnce()" class="bg-slate-600 text-white px-3 py-1 rounded text-sm">↻ Send once</button>
-    </div>
-
-    <table class="w-full text-sm">
-      <thead class="text-xs text-slate-500 uppercase border-b">
-        <tr>
-          <th class="text-left py-1">Node</th>
-          <th class="text-left">State</th>
-          <th class="text-right">Interval</th>
-          <th class="text-right">Sent</th>
-          <th class="text-left pl-3">Last sent</th>
-          <th class="text-left">Last result</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="simBody">
-        <tr><td colspan="7" class="text-slate-400 py-4 text-center">no simulators yet</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <!-- Nodes -->
-  <section class="bg-white shadow rounded p-4">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="font-semibold">📡 Nodes <span id="nodesCount" class="text-slate-400 font-normal text-sm"></span></h2>
-      <span class="text-xs text-slate-500">auto-refresh 2s</span>
-    </div>
-    <table class="w-full text-sm">
-      <thead class="text-xs text-slate-500 uppercase border-b">
-        <tr>
-          <th class="text-left py-1">node_id</th>
-          <th class="text-left">status</th>
-          <th class="text-left">place_type</th>
-          <th class="text-left">place_name</th>
-          <th class="text-right">voltage</th>
-          <th class="text-right">last hb (s ago)</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="nodesBody"></tbody>
-    </table>
-  </section>
-
-  <!-- Impact zones -->
-  <section class="bg-white shadow rounded p-4">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="font-semibold">🌪️ Active Impact Zones <span id="zonesCount" class="text-slate-400 font-normal text-sm"></span></h2>
-      <span class="text-xs text-slate-500">from IncidentImpactZone Service · refresh 5s</span>
-    </div>
-    <table class="w-full text-sm">
-      <thead class="text-xs text-slate-500 uppercase border-b">
-        <tr>
-          <th class="text-left py-1">id</th>
-          <th class="text-left">status</th>
-          <th class="text-left">type</th>
-          <th class="text-left">severity</th>
-          <th class="text-left">source incident</th>
-          <th class="text-left">area</th>
-          <th class="text-left">affected nodes</th>
-        </tr>
-      </thead>
-      <tbody id="zonesBody"></tbody>
-    </table>
-  </section>
-
-  <!-- Outages -->
-  <section class="bg-white shadow rounded p-4">
-    <div class="flex justify-between items-center mb-2">
-      <h2 class="font-semibold">🚨 Outage events <span id="outagesCount" class="text-slate-400 font-normal text-sm"></span></h2>
-      <span class="text-xs text-slate-500">click row to expand dispatch log</span>
-    </div>
-    <table class="w-full text-sm">
-      <thead class="text-xs text-slate-500 uppercase border-b">
-        <tr>
-          <th class="text-left py-1">id</th>
-          <th class="text-left">node</th>
-          <th class="text-left">status</th>
-          <th class="text-left">dispatch</th>
-          <th class="text-right">prio</th>
-          <th class="text-left">incident_id</th>
-          <th class="text-left">priority_request_id</th>
-          <th class="text-left">started</th>
-          <th class="text-left">ended</th>
-        </tr>
-      </thead>
-      <tbody id="outagesBody"></tbody>
-    </table>
-  </section>
-
-</div>
-
-<script>
-// ── Persistent settings ──────────────────────────────────────────
-const LS_KEY = 'powergrid-demo-api';
-let API = localStorage.getItem(LS_KEY) || '';
-document.getElementById('apiUrl').value = API;
-function saveApiUrl() {
-  API = document.getElementById('apiUrl').value.replace(/\/$/, '');
-  localStorage.setItem(LS_KEY, API);
-  pingHealth();
-}
-
-// ── HTTP helpers ─────────────────────────────────────────────────
-async function http(method, path, body) {
-  if (!API) throw new Error('set API URL first');
-  const r = await fetch(API + path, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!r.ok) throw new Error(`${method} ${path} → ${r.status} ${await r.text()}`);
-  return r.json();
-}
-
-async function pingHealth() {
-  const el = document.getElementById('health');
-  if (!API) { el.textContent = 'no API set'; el.className = 'text-sm text-slate-400'; return; }
-  try {
-    await http('GET', '/health');
-    el.textContent = '● connected'; el.className = 'text-sm text-emerald-600 font-medium';
-  } catch (e) {
-    el.textContent = '✕ ' + e.message; el.className = 'text-sm text-rose-600';
-  }
-}
-
-// ── Simulator state (browser-only) ───────────────────────────────
-const sims = new Map(); // nodeId -> {intervalId, intervalSec, voltage, sent, lastSent, lastResult, state}
-
-function addSimulator() {
-  const nodeId = document.getElementById('newNodeId').value.trim();
-  const intervalSec = Math.max(1, Number(document.getElementById('newInterval').value) || 10);
-  const voltage = Number(document.getElementById('newVoltage').value) || undefined;
-  if (!nodeId) return;
-  if (sims.has(nodeId)) return alert(`${nodeId} already running`);
-
-  const sim = { intervalSec, voltage, sent: 0, lastSent: null, lastResult: '—', state: 'running', intervalId: null };
-  const tick = async () => {
-    try {
-      await http('POST', `/demo/heartbeat/${encodeURIComponent(nodeId)}`, { voltage });
-      sim.sent++;
-      sim.lastSent = new Date();
-      sim.lastResult = 'ok';
-    } catch (e) {
-      sim.lastResult = e.message.slice(0, 60);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PowerGrid Demo Console</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="config.js"></script>
+  <style>
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
-    renderSims();
-  };
-  sim.intervalId = setInterval(tick, intervalSec * 1000);
-  sims.set(nodeId, sim);
-  tick();
-  renderSims();
-}
 
-function stopSimulator(nodeId) {
-  const sim = sims.get(nodeId);
-  if (!sim) return;
-  clearInterval(sim.intervalId);
-  sims.delete(nodeId);
-  renderSims();
-}
-
-async function resetNode(nodeId) {
-  try {
-    await http('POST', `/demo/reset/${encodeURIComponent(nodeId)}`);
-  } catch (e) { alert(e.message); }
-}
-
-async function sendOnce() {
-  const nodeId = document.getElementById('newNodeId').value.trim();
-  const voltage = Number(document.getElementById('newVoltage').value) || undefined;
-  if (!nodeId) return;
-  try {
-    await http('POST', `/demo/heartbeat/${encodeURIComponent(nodeId)}`, { voltage });
-  } catch (e) { alert(e.message); }
-}
-
-// ── Generic keyed update (only touch cells whose value changed) ──
-function setText(td, val) {
-  const s = (val == null || val === '') ? '—' : String(val);
-  if (td.textContent !== s) td.textContent = s;
-}
-function setHtml(td, html) {
-  if (td.innerHTML !== html) td.innerHTML = html;
-}
-function setClass(el, cls) {
-  if (el.className !== cls) el.className = cls;
-}
-
-// rows: Map<key, HTMLTableRowElement>
-function upsertRow(tbody, rows, key, columnsCount, makeRow) {
-  let tr = rows.get(key);
-  if (!tr) {
-    tr = document.createElement('tr');
-    rows.set(key, tr);
-    for (let i = 0; i < columnsCount; i++) tr.appendChild(document.createElement('td'));
-    tbody.appendChild(tr);
-  }
-  makeRow(tr);
-  return tr;
-}
-
-function pruneRows(tbody, rows, keepKeys) {
-  for (const [k, tr] of rows) {
-    if (!keepKeys.has(k)) {
-      tr.remove();
-      rows.delete(k);
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
     }
-  }
-}
 
-// ── Simulator render (incremental) ───────────────────────────────
-const simRows = new Map();
-function renderSims() {
-  const tb = document.getElementById('simBody');
-  // Remove "no simulators" placeholder once we have any
-  const placeholder = tb.querySelector('.sim-placeholder');
-  if (sims.size === 0) {
-    pruneRows(tb, simRows, new Set());
-    if (!placeholder) {
-      tb.innerHTML = '<tr class="sim-placeholder"><td colspan="7" class="text-slate-400 py-4 text-center">no simulators yet</td></tr>';
+    .b-online {
+      background: #dcfce7;
+      color: #166534;
     }
-    return;
-  }
-  if (placeholder) placeholder.remove();
 
-  const keep = new Set();
-  for (const [nodeId, sim] of sims) {
-    keep.add(nodeId);
-    upsertRow(tb, simRows, nodeId, 7, (tr) => {
-      setClass(tr, 'border-b');
-      const tds = tr.children;
-      setClass(tds[0], 'py-1 font-mono');
-      setText(tds[0], nodeId);
-      setHtml(tds[1], `<span class="badge ${sim.state==='running'?'b-online pulse':'b-pending'}">${sim.state}</span>`);
-      setClass(tds[2], 'text-right');
-      setText(tds[2], `${sim.intervalSec}s`);
-      setClass(tds[3], 'text-right font-mono');
-      setText(tds[3], sim.sent);
-      setClass(tds[4], 'pl-3 text-slate-500');
-      setText(tds[4], sim.lastSent ? sim.lastSent.toLocaleTimeString() : '—');
-      setClass(tds[5], 'text-slate-500 text-xs truncate max-w-[280px]');
-      tds[5].title = sim.lastResult;
-      setText(tds[5], sim.lastResult);
-      setClass(tds[6], 'text-right');
-      setHtml(tds[6], `<button onclick="stopSimulator('${nodeId}')" class="bg-rose-600 text-white px-2 py-0.5 rounded text-xs">■ Stop</button>`);
-    });
-  }
-  pruneRows(tb, simRows, keep);
-}
-
-// ── Nodes render (incremental) ───────────────────────────────────
-const nodeRows = new Map();
-async function refreshNodes() {
-  if (!API) return;
-  try {
-    const { nodes } = await http('GET', '/demo/nodes');
-    document.getElementById('nodesCount').textContent = `(${nodes.length})`;
-    const tb = document.getElementById('nodesBody');
-    const keep = new Set();
-    for (const n of nodes) {
-      keep.add(n.node_id);
-      upsertRow(tb, nodeRows, n.node_id, 7, (tr) => {
-        setClass(tr, 'border-b');
-        const tds = tr.children;
-        setClass(tds[0], 'py-1 font-mono');
-        setText(tds[0], n.node_id);
-        setHtml(tds[1], `<span class="badge b-${n.status}">${n.status}</span>`);
-        setText(tds[2], n.place_type ?? '—');
-        setClass(tds[3], 'text-slate-500');
-        setText(tds[3], n.place_name ?? '');
-        setClass(tds[4], 'text-right font-mono');
-        setText(tds[4], n.voltage ? Number(n.voltage).toFixed(1) : '—');
-        setClass(tds[5], `text-right font-mono ${n.seconds_since_heartbeat > 60 ? 'text-rose-600 font-semibold' : ''}`);
-        setText(tds[5], `${n.seconds_since_heartbeat}s`);
-        setClass(tds[6], 'text-right');
-        setHtml(tds[6], `<button onclick="resetNode('${n.node_id}')" class="text-xs text-blue-600 hover:underline">reset</button>`);
-      });
+    .b-suspect {
+      background: #fef3c7;
+      color: #92400e;
     }
-    pruneRows(tb, nodeRows, keep);
-  } catch (e) {
-    // Show error only if table is empty (don't blow away existing rows on transient errors)
-    if (nodeRows.size === 0) {
-      document.getElementById('nodesBody').innerHTML = `<tr><td colspan="7" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
+
+    .b-outage {
+      background: #fee2e2;
+      color: #991b1b;
     }
-  }
-}
 
-// ── Outages render (incremental, stable expand) ──────────────────
-const outageRows = new Map();          // outageId -> <tr>
-const detailRows = new Map();          // outageId -> <tr> (the expanded detail row)
-const expanded = new Set();
-async function refreshOutages() {
-  if (!API) return;
-  try {
-    const { outages } = await http('GET', '/demo/outages');
-    document.getElementById('outagesCount').textContent = `(${outages.length})`;
-    const tb = document.getElementById('outagesBody');
-    const keep = new Set();
-    for (const o of outages) {
-      keep.add(o.id);
-      const tr = upsertRow(tb, outageRows, o.id, 9, (tr) => {
-        setClass(tr, 'border-b cursor-pointer hover:bg-slate-50');
-        const tds = tr.children;
-        setClass(tds[0], 'py-1 font-mono');
-        setText(tds[0], o.id);
-        setClass(tds[1], 'font-mono');
-        setText(tds[1], o.node_id);
-        setHtml(tds[2], `<span class="badge b-${o.status}">${o.status}</span>`);
-        setHtml(tds[3], o.dispatch_status ? `<span class="badge b-${o.dispatch_status}">${o.dispatch_status}</span>` : '—');
-        setClass(tds[4], 'text-right');
-        setText(tds[4], o.priority_level ?? 0);
-        setClass(tds[5], 'text-xs text-slate-500 font-mono truncate max-w-[120px]');
-        tds[5].title = o.incident_id ?? '';
-        setText(tds[5], o.incident_id ?? '—');
-        setClass(tds[6], 'text-xs text-slate-500 font-mono truncate max-w-[180px]');
-        tds[6].title = o.priority_request_id ?? '';
-        setText(tds[6], o.priority_request_id ?? '—');
-        setClass(tds[7], 'text-xs text-slate-500');
-        setText(tds[7], fmtTime(o.started_at));
-        setClass(tds[8], 'text-xs text-slate-500');
-        setText(tds[8], fmtTime(o.ended_at));
-      });
-      tr.onclick = () => toggleExpand(o.id);
+    .b-pending {
+      background: #e5e7eb;
+      color: #374151;
+    }
 
-      // Make sure the detail row sits right after this row if expanded
-      if (expanded.has(o.id)) {
-        let detail = detailRows.get(o.id);
-        if (!detail) {
-          detail = document.createElement('tr');
-          const td = document.createElement('td');
-          td.colSpan = 9;
-          td.className = 'bg-slate-50 p-3';
-          td.innerHTML = `<div class="text-xs text-slate-500 italic">loading…</div>`;
-          detail.appendChild(td);
-          detailRows.set(o.id, detail);
-          loadDispatchLog(o.id, detail);
-        }
-        if (tr.nextSibling !== detail) tr.parentNode.insertBefore(detail, tr.nextSibling);
-      } else {
-        const detail = detailRows.get(o.id);
-        if (detail) { detail.remove(); detailRows.delete(o.id); }
+    .b-dispatched {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .b-confirmed {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .b-rejected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .b-resolved {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .b-open {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .row-dim td {
+      color: #9ca3af;
+    }
+
+    .pulse {
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
       }
     }
-    pruneRows(tb, outageRows, keep);
-    // also prune orphan details
-    for (const [k, d] of detailRows) {
-      if (!keep.has(k)) { d.remove(); detailRows.delete(k); expanded.delete(k); }
-    }
-  } catch (e) {
-    if (outageRows.size === 0) {
-      document.getElementById('outagesBody').innerHTML = `<tr><td colspan="9" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
-    }
-  }
-}
+  </style>
+</head>
 
-function toggleExpand(id) {
-  if (expanded.has(id)) {
-    expanded.delete(id);
-    const d = detailRows.get(id);
-    if (d) { d.remove(); detailRows.delete(id); }
-  } else {
-    expanded.add(id);
-    refreshOutages(); // immediate redraw to insert the detail row
-  }
-}
+<body class="bg-slate-50 text-slate-800">
+  <div class="max-w-7xl mx-auto p-4 space-y-4">
 
-async function loadDispatchLog(outageId, detailRow) {
-  try {
-    const { dispatch_log } = await http('GET', `/demo/dispatch-log?outageId=${outageId}`);
-    const td = detailRow.querySelector('td');
-    if (dispatch_log.length === 0) {
-      setHtml(td, `<div class="text-xs text-slate-400 italic">no dispatch attempts yet</div>`);
-      return;
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold">⚡ PowerGrid Demo Console</h1>
+      <div class="flex items-center gap-2">
+        <span id="health" class="text-sm text-slate-500">—</span>
+      </div>
+    </div>
+
+    <!-- Simulator -->
+    <section class="bg-white shadow rounded p-4">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">🛰️ Heartbeat Simulator</h2>
+        <span class="text-xs text-slate-500">runs in this browser tab. close tab → all simulators stop.</span>
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-end mb-3">
+        <div>
+          <label class="block text-xs text-slate-500">Node ID</label>
+          <input id="newNodeId" type="text" value="node-bkk-104" class="border rounded px-2 py-1 text-sm w-44" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500">Interval (s)</label>
+          <input id="newInterval" type="number" value="10" min="1" class="border rounded px-2 py-1 text-sm w-20" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-500">Voltage</label>
+          <input id="newVoltage" type="number" value="220" step="0.1" class="border rounded px-2 py-1 text-sm w-24" />
+        </div>
+        <button onclick="addSimulator()" class="bg-emerald-600 text-white px-3 py-1 rounded text-sm">▶ Start</button>
+        <button onclick="sendOnce()" class="bg-slate-600 text-white px-3 py-1 rounded text-sm">↻ Send once</button>
+      </div>
+
+      <table class="w-full text-sm">
+        <thead class="text-xs text-slate-500 uppercase border-b">
+          <tr>
+            <th class="text-left py-1">Node</th>
+            <th class="text-left">State</th>
+            <th class="text-right">Interval</th>
+            <th class="text-right">Sent</th>
+            <th class="text-left pl-3">Last sent</th>
+            <th class="text-left">Last result</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="simBody">
+          <tr>
+            <td colspan="7" class="text-slate-400 py-4 text-center">no simulators yet</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Nodes -->
+    <section class="bg-white shadow rounded p-4">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-semibold">📡 Nodes <span id="nodesCount" class="text-slate-400 font-normal text-sm"></span></h2>
+        <span class="text-xs text-slate-500">auto-refresh 2s</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="text-xs text-slate-500 uppercase border-b">
+          <tr>
+            <th class="text-left py-1">node_id</th>
+            <th class="text-left">status</th>
+            <th class="text-left">place_type</th>
+            <th class="text-left">place_name</th>
+            <th class="text-right">voltage</th>
+            <th class="text-right">last hb (s ago)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="nodesBody"></tbody>
+      </table>
+    </section>
+
+    <!-- Map -->
+    <section class="bg-white shadow rounded p-4">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-semibold">🗺️ Map · Nodes & Impact Zones</h2>
+        <span class="text-xs text-slate-500">
+          <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 align-middle"></span> online
+          <span class="inline-block w-2 h-2 rounded-full bg-amber-500 align-middle ml-2"></span> suspect
+          <span class="inline-block w-2 h-2 rounded-full bg-rose-600 align-middle ml-2"></span> outage
+          <span class="ml-3">· red shape = active zone</span>
+        </span>
+      </div>
+      <div id="map" style="height: 480px; border-radius: 6px;"></div>
+    </section>
+
+    <!-- Impact zones -->
+    <section class="bg-white shadow rounded p-4">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-semibold">🌪️ Active Impact Zones <span id="zonesCount"
+            class="text-slate-400 font-normal text-sm"></span></h2>
+        <span class="text-xs text-slate-500">from IncidentImpactZone Service · refresh 5s</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="text-xs text-slate-500 uppercase border-b">
+          <tr>
+            <th class="text-left py-1">id</th>
+            <th class="text-left">status</th>
+            <th class="text-left">type</th>
+            <th class="text-left">severity</th>
+            <th class="text-left">source incident</th>
+            <th class="text-left">area</th>
+            <th class="text-left">affected nodes</th>
+          </tr>
+        </thead>
+        <tbody id="zonesBody"></tbody>
+      </table>
+    </section>
+
+    <!-- Outages -->
+    <section class="bg-white shadow rounded p-4">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="font-semibold">🚨 Outage events <span id="outagesCount"
+            class="text-slate-400 font-normal text-sm"></span></h2>
+        <span class="text-xs text-slate-500">click row to expand dispatch log</span>
+      </div>
+      <table class="w-full text-sm">
+        <thead class="text-xs text-slate-500 uppercase border-b">
+          <tr>
+            <th class="text-left py-1">id</th>
+            <th class="text-left">node</th>
+            <th class="text-left">status</th>
+            <th class="text-left">dispatch</th>
+            <th class="text-right">prio</th>
+            <th class="text-left">incident_id</th>
+            <th class="text-left">priority_request_id</th>
+            <th class="text-left">started</th>
+            <th class="text-left">ended</th>
+          </tr>
+        </thead>
+        <tbody id="outagesBody"></tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <script>
+    // ── API endpoint (from config.js) ────────────────────────────────
+    const API = ((window.APP_CONFIG && window.APP_CONFIG.apiUrl) || '').replace(/\/$/, '');
+
+    // ── HTTP helpers ─────────────────────────────────────────────────
+    async function http(method, path, body) {
+      if (!API) throw new Error('set API URL first');
+      const r = await fetch(API + path, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!r.ok) throw new Error(`${method} ${path} → ${r.status} ${await r.text()}`);
+      return r.json();
     }
-    setHtml(td, `
+
+    async function pingHealth() {
+      const el = document.getElementById('health');
+      if (!API) { el.textContent = 'no API set'; el.className = 'text-sm text-slate-400'; return; }
+      try {
+        await http('GET', '/health');
+        el.textContent = '● connected'; el.className = 'text-sm text-emerald-600 font-medium';
+      } catch (e) {
+        el.textContent = '✕ ' + e.message; el.className = 'text-sm text-rose-600';
+      }
+    }
+
+    // ── Simulator state (browser-only) ───────────────────────────────
+    const sims = new Map(); // nodeId -> {intervalId, intervalSec, voltage, sent, lastSent, lastResult, state}
+
+    function addSimulator() {
+      const nodeId = document.getElementById('newNodeId').value.trim();
+      const intervalSec = Math.max(1, Number(document.getElementById('newInterval').value) || 10);
+      const voltage = Number(document.getElementById('newVoltage').value) || undefined;
+      if (!nodeId) return;
+      if (sims.has(nodeId)) return alert(`${nodeId} already running`);
+
+      const sim = { intervalSec, voltage, sent: 0, lastSent: null, lastResult: '—', state: 'running', intervalId: null };
+      const tick = async () => {
+        try {
+          await http('POST', `/demo/heartbeat/${encodeURIComponent(nodeId)}`, { voltage });
+          sim.sent++;
+          sim.lastSent = new Date();
+          sim.lastResult = 'ok';
+        } catch (e) {
+          sim.lastResult = e.message.slice(0, 60);
+        }
+        renderSims();
+      };
+      sim.intervalId = setInterval(tick, intervalSec * 1000);
+      sims.set(nodeId, sim);
+      tick();
+      renderSims();
+    }
+
+    function stopSimulator(nodeId) {
+      const sim = sims.get(nodeId);
+      if (!sim) return;
+      clearInterval(sim.intervalId);
+      sims.delete(nodeId);
+      renderSims();
+    }
+
+    async function resetNode(nodeId) {
+      try {
+        await http('POST', `/demo/reset/${encodeURIComponent(nodeId)}`);
+      } catch (e) { alert(e.message); }
+    }
+
+    async function sendOnce() {
+      const nodeId = document.getElementById('newNodeId').value.trim();
+      const voltage = Number(document.getElementById('newVoltage').value) || undefined;
+      if (!nodeId) return;
+      try {
+        await http('POST', `/demo/heartbeat/${encodeURIComponent(nodeId)}`, { voltage });
+      } catch (e) { alert(e.message); }
+    }
+
+    // ── Generic keyed update (only touch cells whose value changed) ──
+    function setText(td, val) {
+      const s = (val == null || val === '') ? '—' : String(val);
+      if (td.textContent !== s) td.textContent = s;
+    }
+    function setHtml(td, html) {
+      if (td.innerHTML !== html) td.innerHTML = html;
+    }
+    function setClass(el, cls) {
+      if (el.className !== cls) el.className = cls;
+    }
+
+    // rows: Map<key, HTMLTableRowElement>
+    function upsertRow(tbody, rows, key, columnsCount, makeRow) {
+      let tr = rows.get(key);
+      if (!tr) {
+        tr = document.createElement('tr');
+        rows.set(key, tr);
+        for (let i = 0; i < columnsCount; i++) tr.appendChild(document.createElement('td'));
+        tbody.appendChild(tr);
+      }
+      makeRow(tr);
+      return tr;
+    }
+
+    function pruneRows(tbody, rows, keepKeys) {
+      for (const [k, tr] of rows) {
+        if (!keepKeys.has(k)) {
+          tr.remove();
+          rows.delete(k);
+        }
+      }
+    }
+
+    // ── Simulator render (incremental) ───────────────────────────────
+    const simRows = new Map();
+    function renderSims() {
+      const tb = document.getElementById('simBody');
+      // Remove "no simulators" placeholder once we have any
+      const placeholder = tb.querySelector('.sim-placeholder');
+      if (sims.size === 0) {
+        pruneRows(tb, simRows, new Set());
+        if (!placeholder) {
+          tb.innerHTML = '<tr class="sim-placeholder"><td colspan="7" class="text-slate-400 py-4 text-center">no simulators yet</td></tr>';
+        }
+        return;
+      }
+      if (placeholder) placeholder.remove();
+
+      const keep = new Set();
+      for (const [nodeId, sim] of sims) {
+        keep.add(nodeId);
+        upsertRow(tb, simRows, nodeId, 7, (tr) => {
+          setClass(tr, 'border-b');
+          const tds = tr.children;
+          setClass(tds[0], 'py-1 font-mono');
+          setText(tds[0], nodeId);
+          setHtml(tds[1], `<span class="badge ${sim.state === 'running' ? 'b-online pulse' : 'b-pending'}">${sim.state}</span>`);
+          setClass(tds[2], 'text-right');
+          setText(tds[2], `${sim.intervalSec}s`);
+          setClass(tds[3], 'text-right font-mono');
+          setText(tds[3], sim.sent);
+          setClass(tds[4], 'pl-3 text-slate-500');
+          setText(tds[4], sim.lastSent ? sim.lastSent.toLocaleTimeString() : '—');
+          setClass(tds[5], 'text-slate-500 text-xs truncate max-w-[280px]');
+          tds[5].title = sim.lastResult;
+          setText(tds[5], sim.lastResult);
+          setClass(tds[6], 'text-right');
+          setHtml(tds[6], `<button onclick="stopSimulator('${nodeId}')" class="bg-rose-600 text-white px-2 py-0.5 rounded text-xs">■ Stop</button>`);
+        });
+      }
+      pruneRows(tb, simRows, keep);
+    }
+
+    // ── Shared latest data (used by map) ─────────────────────────────
+    let latestNodes = [];
+    let latestZones = [];
+
+    // ── Nodes render (incremental) ───────────────────────────────────
+    const nodeRows = new Map();
+    async function refreshNodes() {
+      if (!API) return;
+      try {
+        const { nodes } = await http('GET', '/demo/nodes');
+        latestNodes = nodes;
+        renderMap();
+        document.getElementById('nodesCount').textContent = `(${nodes.length})`;
+        const tb = document.getElementById('nodesBody');
+        const keep = new Set();
+        for (const n of nodes) {
+          keep.add(n.node_id);
+          upsertRow(tb, nodeRows, n.node_id, 7, (tr) => {
+            setClass(tr, 'border-b');
+            const tds = tr.children;
+            setClass(tds[0], 'py-1 font-mono');
+            setText(tds[0], n.node_id);
+            setHtml(tds[1], `<span class="badge b-${n.status}">${n.status}</span>`);
+            setText(tds[2], n.place_type ?? '—');
+            setClass(tds[3], 'text-slate-500');
+            setText(tds[3], n.place_name ?? '');
+            setClass(tds[4], 'text-right font-mono');
+            setText(tds[4], n.voltage ? Number(n.voltage).toFixed(1) : '—');
+            setClass(tds[5], `text-right font-mono ${n.seconds_since_heartbeat > 60 ? 'text-rose-600 font-semibold' : ''}`);
+            setText(tds[5], `${n.seconds_since_heartbeat}s`);
+            setClass(tds[6], 'text-right');
+            setHtml(tds[6], `<button onclick="resetNode('${n.node_id}')" class="text-xs text-blue-600 hover:underline">reset</button>`);
+          });
+        }
+        pruneRows(tb, nodeRows, keep);
+      } catch (e) {
+        // Show error only if table is empty (don't blow away existing rows on transient errors)
+        if (nodeRows.size === 0) {
+          document.getElementById('nodesBody').innerHTML = `<tr><td colspan="7" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
+        }
+      }
+    }
+
+    // ── Outages render (incremental, stable expand) ──────────────────
+    const outageRows = new Map();          // outageId -> <tr>
+    const detailRows = new Map();          // outageId -> <tr> (the expanded detail row)
+    const expanded = new Set();
+    async function refreshOutages() {
+      if (!API) return;
+      try {
+        const { outages } = await http('GET', '/demo/outages');
+        document.getElementById('outagesCount').textContent = `(${outages.length})`;
+        const tb = document.getElementById('outagesBody');
+        const keep = new Set();
+        for (const o of outages) {
+          keep.add(o.id);
+          const tr = upsertRow(tb, outageRows, o.id, 9, (tr) => {
+            setClass(tr, 'border-b cursor-pointer hover:bg-slate-50');
+            const tds = tr.children;
+            setClass(tds[0], 'py-1 font-mono');
+            setText(tds[0], o.id);
+            setClass(tds[1], 'font-mono');
+            setText(tds[1], o.node_id);
+            setHtml(tds[2], `<span class="badge b-${o.status}">${o.status}</span>`);
+            setHtml(tds[3], o.dispatch_status ? `<span class="badge b-${o.dispatch_status}">${o.dispatch_status}</span>` : '—');
+            setClass(tds[4], 'text-right');
+            setText(tds[4], o.priority_level ?? 0);
+            setClass(tds[5], 'text-xs text-slate-500 font-mono truncate max-w-[120px]');
+            tds[5].title = o.incident_id ?? '';
+            setText(tds[5], o.incident_id ?? '—');
+            setClass(tds[6], 'text-xs text-slate-500 font-mono truncate max-w-[180px]');
+            tds[6].title = o.priority_request_id ?? '';
+            setText(tds[6], o.priority_request_id ?? '—');
+            setClass(tds[7], 'text-xs text-slate-500');
+            setText(tds[7], fmtTime(o.started_at));
+            setClass(tds[8], 'text-xs text-slate-500');
+            setText(tds[8], fmtTime(o.ended_at));
+          });
+          tr.onclick = () => toggleExpand(o.id);
+
+          // Make sure the detail row sits right after this row if expanded
+          if (expanded.has(o.id)) {
+            let detail = detailRows.get(o.id);
+            if (!detail) {
+              detail = document.createElement('tr');
+              const td = document.createElement('td');
+              td.colSpan = 9;
+              td.className = 'bg-slate-50 p-3';
+              td.innerHTML = `<div class="text-xs text-slate-500 italic">loading…</div>`;
+              detail.appendChild(td);
+              detailRows.set(o.id, detail);
+              loadDispatchLog(o.id, detail);
+            }
+            if (tr.nextSibling !== detail) tr.parentNode.insertBefore(detail, tr.nextSibling);
+          } else {
+            const detail = detailRows.get(o.id);
+            if (detail) { detail.remove(); detailRows.delete(o.id); }
+          }
+        }
+        pruneRows(tb, outageRows, keep);
+        // also prune orphan details
+        for (const [k, d] of detailRows) {
+          if (!keep.has(k)) { d.remove(); detailRows.delete(k); expanded.delete(k); }
+        }
+      } catch (e) {
+        if (outageRows.size === 0) {
+          document.getElementById('outagesBody').innerHTML = `<tr><td colspan="9" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
+        }
+      }
+    }
+
+    function toggleExpand(id) {
+      if (expanded.has(id)) {
+        expanded.delete(id);
+        const d = detailRows.get(id);
+        if (d) { d.remove(); detailRows.delete(id); }
+      } else {
+        expanded.add(id);
+        refreshOutages(); // immediate redraw to insert the detail row
+      }
+    }
+
+    async function loadDispatchLog(outageId, detailRow) {
+      try {
+        const { dispatch_log } = await http('GET', `/demo/dispatch-log?outageId=${outageId}`);
+        const td = detailRow.querySelector('td');
+        if (dispatch_log.length === 0) {
+          setHtml(td, `<div class="text-xs text-slate-400 italic">no dispatch attempts yet</div>`);
+          return;
+        }
+        setHtml(td, `
       <div class="text-xs">
         <div class="font-semibold mb-1 text-slate-600">dispatch_log for outage #${outageId}</div>
         <table class="w-full">
@@ -451,86 +534,166 @@ async function loadDispatchLog(outageId, detailRow) {
           </tbody>
         </table>
       </div>`);
-  } catch (e) {
-    detailRow.querySelector('td').innerHTML = `<div class="text-xs text-rose-600">${escapeHtml(e.message)}</div>`;
-  }
-}
-
-// Periodic refresh of dispatch logs for currently-expanded outages
-async function refreshExpandedDispatchLogs() {
-  for (const [outageId, detail] of detailRows) {
-    if (expanded.has(outageId)) {
-      await loadDispatchLog(outageId, detail);
+      } catch (e) {
+        detailRow.querySelector('td').innerHTML = `<div class="text-xs text-rose-600">${escapeHtml(e.message)}</div>`;
+      }
     }
-  }
-}
 
-// ── Impact zones render (incremental) ────────────────────────────
-const zoneRows = new Map();
-async function refreshZones() {
-  if (!API) return;
-  try {
-    const r = await http('GET', '/demo/impact-zones');
-    const items = (r.body && Array.isArray(r.body.items)) ? r.body.items : [];
-    document.getElementById('zonesCount').textContent = `(${items.length})`;
-    const tb = document.getElementById('zonesBody');
-    const keep = new Set();
-    for (const z of items) {
-      const key = z.id || z.sourceIncidentId || JSON.stringify(z).slice(0, 32);
-      keep.add(key);
-      upsertRow(tb, zoneRows, key, 7, (tr) => {
-        setClass(tr, 'border-b ' + (z.status === 'ACTIVE' ? '' : 'row-dim'));
-        const tds = tr.children;
-        setClass(tds[0], 'py-1 font-mono text-xs');
-        tds[0].title = z.id ?? '';
-        setText(tds[0], z.id ?? '—');
-        setHtml(tds[1], `<span class="badge ${z.status==='ACTIVE'?'b-outage':'b-pending'}">${z.status ?? '—'}</span>`);
-        setText(tds[2], z.incidentType ?? '—');
-        setText(tds[3], z.severityLevel ?? '—');
-        setClass(tds[4], 'text-xs text-slate-500 font-mono truncate max-w-[200px]');
-        const src = z.sourceIncidentId || (Array.isArray(z.sourceIncidentIds) ? z.sourceIncidentIds.join(',') : '') || (z.incidentReporterSnapshot && z.incidentReporterSnapshot.incidentId) || '';
-        tds[4].title = src;
-        setText(tds[4], src || '—');
-        let areaTxt = '—';
-        if (z.affectedArea && z.affectedArea.coordinates && z.affectedArea.coordinates[0]) {
-          areaTxt = `polygon (${z.affectedArea.coordinates[0].length} pts)`;
-        } else if (z.centerPoint && typeof z.radiusKm === 'number') {
-          areaTxt = `circle r=${z.radiusKm}km @ ${z.centerPoint.lat.toFixed(3)},${z.centerPoint.lng.toFixed(3)}`;
+    // Periodic refresh of dispatch logs for currently-expanded outages
+    async function refreshExpandedDispatchLogs() {
+      for (const [outageId, detail] of detailRows) {
+        if (expanded.has(outageId)) {
+          await loadDispatchLog(outageId, detail);
         }
-        setClass(tds[5], 'text-xs text-slate-500');
-        setText(tds[5], areaTxt);
-        const affected = Array.isArray(z._affected_node_ids) ? z._affected_node_ids : [];
-        setClass(tds[6], 'text-xs font-mono ' + (affected.length ? 'text-rose-700 font-semibold' : 'text-slate-400'));
-        tds[6].title = affected.join(', ');
-        setText(tds[6], affected.length ? `${affected.length}: ${affected.slice(0, 3).join(', ')}${affected.length > 3 ? ' …' : ''}` : 'none');
-      });
+      }
     }
-    pruneRows(tb, zoneRows, keep);
-    if (items.length === 0 && zoneRows.size === 0) {
-      tb.innerHTML = `<tr><td colspan="7" class="text-slate-400 text-xs py-2 text-center">no zones returned</td></tr>`;
-    }
-  } catch (e) {
-    if (zoneRows.size === 0) {
-      document.getElementById('zonesBody').innerHTML = `<tr><td colspan="7" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
-    }
-  }
-}
 
-// ── helpers ──────────────────────────────────────────────────────
-function fmtTime(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleTimeString();
-}
-function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
-function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+    // ── Impact zones render (incremental) ────────────────────────────
+    const zoneRows = new Map();
+    async function refreshZones() {
+      if (!API) return;
+      try {
+        const r = await http('GET', '/demo/impact-zones');
+        const items = (r.body && Array.isArray(r.body.items)) ? r.body.items : [];
+        latestZones = items;
+        renderMap();
+        document.getElementById('zonesCount').textContent = `(${items.length})`;
+        const tb = document.getElementById('zonesBody');
+        const keep = new Set();
+        for (const z of items) {
+          const key = z.id || z.sourceIncidentId || JSON.stringify(z).slice(0, 32);
+          keep.add(key);
+          upsertRow(tb, zoneRows, key, 7, (tr) => {
+            setClass(tr, 'border-b ' + (z.status === 'ACTIVE' ? '' : 'row-dim'));
+            const tds = tr.children;
+            setClass(tds[0], 'py-1 font-mono text-xs');
+            tds[0].title = z.id ?? '';
+            setText(tds[0], z.id ?? '—');
+            setHtml(tds[1], `<span class="badge ${z.status === 'ACTIVE' ? 'b-outage' : 'b-pending'}">${z.status ?? '—'}</span>`);
+            setText(tds[2], z.incidentType ?? '—');
+            setText(tds[3], z.severityLevel ?? '—');
+            setClass(tds[4], 'text-xs text-slate-500 font-mono truncate max-w-[200px]');
+            const src = z.sourceIncidentId || (Array.isArray(z.sourceIncidentIds) ? z.sourceIncidentIds.join(',') : '') || (z.incidentReporterSnapshot && z.incidentReporterSnapshot.incidentId) || '';
+            tds[4].title = src;
+            setText(tds[4], src || '—');
+            let areaTxt = '—';
+            if (z.affectedArea && z.affectedArea.coordinates && z.affectedArea.coordinates[0]) {
+              areaTxt = `polygon (${z.affectedArea.coordinates[0].length} pts)`;
+            } else if (z.centerPoint && typeof z.radiusKm === 'number') {
+              areaTxt = `circle r=${z.radiusKm}km @ ${z.centerPoint.lat.toFixed(3)},${z.centerPoint.lng.toFixed(3)}`;
+            }
+            setClass(tds[5], 'text-xs text-slate-500');
+            setText(tds[5], areaTxt);
+            const affected = Array.isArray(z._affected_node_ids) ? z._affected_node_ids : [];
+            setClass(tds[6], 'text-xs font-mono ' + (affected.length ? 'text-rose-700 font-semibold' : 'text-slate-400'));
+            tds[6].title = affected.join(', ');
+            setText(tds[6], affected.length ? `${affected.length}: ${affected.slice(0, 3).join(', ')}${affected.length > 3 ? ' …' : ''}` : 'none');
+          });
+        }
+        pruneRows(tb, zoneRows, keep);
+        if (items.length === 0 && zoneRows.size === 0) {
+          tb.innerHTML = `<tr><td colspan="7" class="text-slate-400 text-xs py-2 text-center">no zones returned</td></tr>`;
+        }
+      } catch (e) {
+        if (zoneRows.size === 0) {
+          document.getElementById('zonesBody').innerHTML = `<tr><td colspan="7" class="text-rose-600 text-xs py-2">${escapeHtml(e.message)}</td></tr>`;
+        }
+      }
+    }
 
-// ── boot ─────────────────────────────────────────────────────────
-pingHealth();
-setInterval(() => { refreshNodes(); refreshOutages(); }, 2000);
-setInterval(refreshExpandedDispatchLogs, 5000);
-setInterval(refreshZones, 5000);
-refreshNodes(); refreshOutages(); refreshZones();
-</script>
+    // ── Map render ───────────────────────────────────────────────────
+    const NODE_COLOR = { online: '#10b981', suspect: '#f59e0b', outage: '#e11d48' };
+    let map = null;
+    let nodeLayer = null;
+    let zoneLayer = null;
+    let mapFitted = false;
+
+    function initMap() {
+      map = L.map('map', { zoomControl: true }).setView([13.7563, 100.5018], 11); // Bangkok default
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap',
+      }).addTo(map);
+      nodeLayer = L.layerGroup().addTo(map);
+      zoneLayer = L.layerGroup().addTo(map);
+    }
+
+    function renderMap() {
+      if (!map) return;
+
+      // Zones
+      zoneLayer.clearLayers();
+      for (const z of latestZones) {
+        const isActive = z.status === 'ACTIVE';
+        const style = {
+          color: isActive ? '#dc2626' : '#9ca3af',
+          weight: 2,
+          fillColor: isActive ? '#ef4444' : '#9ca3af',
+          fillOpacity: isActive ? 0.18 : 0.08,
+        };
+        const label = `<b>${z.id ?? 'zone'}</b><br>` +
+          `status: ${z.status ?? '—'}<br>` +
+          `type: ${z.incidentType ?? '—'}<br>` +
+          `severity: ${z.severityLevel ?? '—'}` +
+          (Array.isArray(z._affected_node_ids) && z._affected_node_ids.length
+            ? `<br>affected: ${z._affected_node_ids.join(', ')}` : '');
+
+        if (z.affectedArea && z.affectedArea.coordinates && z.affectedArea.coordinates[0]) {
+          // GeoJSON polygon: [lng, lat] → Leaflet wants [lat, lng]
+          const ring = z.affectedArea.coordinates[0].map(([lng, lat]) => [lat, lng]);
+          L.polygon(ring, style).bindPopup(label).addTo(zoneLayer);
+        } else if (z.centerPoint && typeof z.radiusKm === 'number') {
+          L.circle([z.centerPoint.lat, z.centerPoint.lng], {
+            ...style, radius: z.radiusKm * 1000,
+          }).bindPopup(label).addTo(zoneLayer);
+        }
+      }
+
+      // Nodes
+      nodeLayer.clearLayers();
+      const points = [];
+      for (const n of latestNodes) {
+        if (n.latitude == null || n.longitude == null) continue;
+        const lat = Number(n.latitude), lng = Number(n.longitude);
+        points.push([lat, lng]);
+        const color = NODE_COLOR[n.status] || '#64748b';
+        L.circleMarker([lat, lng], {
+          radius: 7, color: '#ffffff', weight: 2, fillColor: color, fillOpacity: 1,
+        })
+          .bindPopup(
+            `<b>${n.node_id}</b><br>` +
+            `status: ${n.status}<br>` +
+            `place: ${n.place_name ?? '—'} (${n.place_type ?? '—'})<br>` +
+            `voltage: ${n.voltage ? Number(n.voltage).toFixed(1) : '—'}<br>` +
+            `last hb: ${n.seconds_since_heartbeat}s ago`
+          )
+          .addTo(nodeLayer);
+      }
+
+      // Auto-fit once when we first have node coords
+      if (!mapFitted && points.length > 0) {
+        map.fitBounds(L.latLngBounds(points).pad(0.2));
+        mapFitted = true;
+      }
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────
+    function fmtTime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleTimeString();
+    }
+    function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+    function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
+
+    // ── boot ─────────────────────────────────────────────────────────
+    initMap();
+    pingHealth();
+    setInterval(() => { refreshNodes(); refreshOutages(); }, 2000);
+    setInterval(refreshExpandedDispatchLogs, 5000);
+    setInterval(refreshZones, 5000);
+    refreshNodes(); refreshOutages(); refreshZones();
+  </script>
 </body>
+
 </html>

@@ -18,20 +18,24 @@ if [ ! -f infra/terraform.tfvars ]; then
   exit 1
 fi
 
-echo "→ [1/4] Build Lambda packages"
+echo "→ [1/5] Build Lambda packages"
 npm run build
 
 echo
-echo "→ [2/4] tofu init"
+echo "→ [2/5] tofu init"
 (cd infra && tofu init -input=false -upgrade)
 
 echo
-echo "→ [3/4] tofu apply"
+echo "→ [3/5] tofu apply"
 (cd infra && tofu apply -auto-approve -input=false)
 
 echo
-echo "→ [4/4] Run DB migrations"
+echo "→ [4/5] Run DB migrations"
 DATABASE_URL="$(cd infra && tofu output -raw database_url)" npm run migrate
+
+echo
+echo "→ [5/5] Deploy web to S3"
+bash scripts/deploy-web.sh
 
 echo
 echo "✓ Deployed successfully."
@@ -40,6 +44,8 @@ echo "Endpoints / IDs:"
 echo "  RDS endpoint:        $(cd infra && tofu output -raw rds_endpoint)"
 echo "  SNS status topic:    $(cd infra && tofu output -raw sns_status_topic_arn)"
 echo "  SNS outage topic:    $(cd infra && tofu output -raw sns_outage_topic_arn)"
+echo "  API endpoint:        $(cd infra && tofu output -raw api_endpoint)"
+echo "  Web URL:             $(cd infra && tofu output -raw web_url)"
 echo
 echo "Lambda functions:"
 (cd infra && tofu output -json lambdas | jq -r 'to_entries[] | "  • " + .value')

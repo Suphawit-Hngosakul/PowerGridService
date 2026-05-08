@@ -6,6 +6,14 @@ output "api_endpoint" {
   value = aws_api_gateway_stage.api.invoke_url
 }
 
+output "web_bucket" {
+  value = aws_s3_bucket.web.id
+}
+
+output "web_url" {
+  value = "http://${aws_s3_bucket_website_configuration.web.website_endpoint}"
+}
+
 output "database_url" {
   value     = "postgres://${var.db_username}:${var.db_password}@${aws_db_instance.pg.endpoint}/${var.db_name}"
   sensitive = true
