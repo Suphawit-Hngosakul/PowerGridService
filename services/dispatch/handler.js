@@ -275,11 +275,17 @@ async function callIncidentService(outage) {
   }, fallback);
 }
 
+function generateRequestId() {
+  return `REQ-PW${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+}
+
 async function callHelpService(outage, incident) {
   if (!PRIORITY_CASE_SERVICE_URL) throw new Error('PRIORITY_CASE_SERVICE_URL not configured');
 
   const place = outage.place_name ? ` (${outage.place_name})` : '';
+  const requestId = generateRequestId();
   const payload = {
+    request_id: requestId,
     incident_Id: incident.incident_id,
     incident_type: 'power_outage',
     latitude: Number(outage.latitude),
@@ -326,7 +332,7 @@ async function callHelpService(outage, incident) {
       await markRejected(outage.id, reason);
       return { __rejected: true, reason };
     }
-    await recordPriorityCorrelation(outage.id, result.request_id, result.trace_id);
+    await recordPriorityCorrelation(outage.id, requestId, result && result.trace_id);
     return result;
   }, fallback);
 }

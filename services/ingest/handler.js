@@ -13,14 +13,23 @@ function extractRecords(event) {
   return [];
 }
 
+let snsClient;
+let PublishCommandRef;
+function getSns() {
+  if (snsClient) return { sns: snsClient, PublishCommand: PublishCommandRef };
+  const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+  snsClient = new SNSClient({ region: process.env.AWS_REGION });
+  PublishCommandRef = PublishCommand;
+  return { sns: snsClient, PublishCommand };
+}
+
 async function publishStatusChange(nodeId, newStatus) {
   const arn = process.env.SNS_STATUS_TOPIC_ARN;
   if (!arn) {
     console.log(`[ingest] (local) status-changed node=${nodeId} status=${newStatus}`);
     return;
   }
-  const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
-  const sns = new SNSClient({ region: process.env.AWS_REGION });
+  const { sns, PublishCommand } = getSns();
   await sns.send(new PublishCommand({
     TopicArn: arn,
     Message: JSON.stringify({ node_id: nodeId, status: newStatus, timestamp: new Date().toISOString() }),
