@@ -98,6 +98,11 @@
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold">⚡ PowerGrid Demo Console</h1>
       <div class="flex items-center gap-2">
+        <span id="lastRefresh" class="text-xs text-slate-400">never</span>
+        <button id="refreshBtn" onclick="refreshAll()"
+          class="bg-slate-700 text-white px-3 py-1 rounded text-sm hover:bg-slate-800">↻ Refresh</button>
+        <button id="liveBtn" onclick="toggleLive()"
+          class="bg-emerald-600 text-white px-3 py-1 rounded text-sm hover:bg-emerald-700">▶ Live</button>
         <span id="health" class="text-sm text-slate-500">—</span>
       </div>
     </div>
@@ -150,7 +155,7 @@
     <section class="bg-white shadow rounded p-4">
       <div class="flex justify-between items-center mb-2">
         <h2 class="font-semibold">📡 Nodes <span id="nodesCount" class="text-slate-400 font-normal text-sm"></span></h2>
-        <span class="text-xs text-slate-500">auto-refresh 2s</span>
+        <span class="text-xs text-slate-500">manual · use Refresh / Live above</span>
       </div>
       <table class="w-full text-sm">
         <thead class="text-xs text-slate-500 uppercase border-b">
@@ -187,7 +192,7 @@
       <div class="flex justify-between items-center mb-2">
         <h2 class="font-semibold">🌪️ Active Impact Zones <span id="zonesCount"
             class="text-slate-400 font-normal text-sm"></span></h2>
-        <span class="text-xs text-slate-500">from IncidentImpactZone Service · refresh 5s</span>
+        <span class="text-xs text-slate-500">from IncidentImpactZone Service</span>
       </div>
       <table class="w-full text-sm">
         <thead class="text-xs text-slate-500 uppercase border-b">
@@ -686,13 +691,55 @@
     function escapeHtml(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
     function escapeAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 
+    // ── Refresh control (manual + live toggle) ───────────────────────
+    const LIVE_INTERVAL_MS = 15000;
+    let liveTimer = null;
+    let isRefreshing = false;
+
+    async function refreshAll() {
+      if (isRefreshing) return;
+      isRefreshing = true;
+      const btn = document.getElementById('refreshBtn');
+      btn.disabled = true; btn.textContent = '… loading';
+      try {
+        await Promise.all([refreshNodes(), refreshOutages(), refreshZones(), refreshExpandedDispatchLogs()]);
+        document.getElementById('lastRefresh').textContent = 'updated ' + new Date().toLocaleTimeString();
+      } finally {
+        isRefreshing = false;
+        btn.disabled = false; btn.textContent = '↻ Refresh';
+      }
+    }
+
+    function toggleLive() {
+      const btn = document.getElementById('liveBtn');
+      if (liveTimer) {
+        clearInterval(liveTimer);
+        liveTimer = null;
+        btn.textContent = '▶ Live';
+        btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+      } else {
+        liveTimer = setInterval(refreshAll, LIVE_INTERVAL_MS);
+        btn.textContent = '⏸ Stop (' + (LIVE_INTERVAL_MS / 1000) + 's)';
+        btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
+        btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+        refreshAll(); // immediate first refresh
+      }
+    }
+
+    // Stop live polling when tab goes to background to avoid hammering API
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && liveTimer) {
+        toggleLive(); // turn off
+        const el = document.getElementById('lastRefresh');
+        el.textContent = 'live paused (tab hidden)';
+      }
+    });
+
     // ── boot ─────────────────────────────────────────────────────────
     initMap();
     pingHealth();
-    setInterval(() => { refreshNodes(); refreshOutages(); }, 2000);
-    setInterval(refreshExpandedDispatchLogs, 5000);
-    setInterval(refreshZones, 5000);
-    refreshNodes(); refreshOutages(); refreshZones();
+    refreshAll(); // initial load only
   </script>
 </body>
 
