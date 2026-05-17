@@ -1,0 +1,92 @@
+flowchart LR
+    SIM["Power Node Simulator<br/>(heartbeat ~10s)"]
+    USER(["User Browser"])
+
+    subgraph IOT["AWS IoT"]
+        IOTCORE["AWS IoT Core<br/>topic: powergrid/nodes/+/heartbeat"]
+        RULE["IoT Topic Rule"]
+    end
+
+    subgraph INGEST_BOX["Ingestion (event-driven)"]
+        LING["Lambda Ingest<br/>UPSERT node + resolve open outage"]
+    end
+
+    subgraph DETECT_BOX["Detection (scheduled, every 1 min)"]
+        EBS["EventBridge Scheduler<br/>rate(1 minute)"]
+        LDET["Lambda Detect<br/>online → suspect (60s) → outage (120s)<br/>insert outage_event (NOT EXISTS)"]
+    end
+
+    subgraph NOTIFY_BOX["Notification"]
+        SNS_STATUS["SNS<br/>powergrid-node-status-changed"]
+    end
+
+    subgraph DISPATCH_BOX["Dispatch (async, retry + DLQ)"]
+        SNS["SNS<br/>powergrid-outage-confirmed"]
+        SQSD["SQS<br/>powergrid-dispatch"]
+        DLQ["SQS DLQ<br/>powergrid-dispatch-dlq"]
+        LDIS["Lambda Dispatch<br/>point-in-polygon<br/>HMAC-SHA256 sign<br/>Circuit Breaker + Retry<br/>Optimistic Locking"]
+    end
+
+    subgraph CONFIRM_BOX["Confirmation"]
+        LCON["Lambda Confirm<br/>close outage_event<br/>reset node → online"]
+    end
+
+    subgraph QUERY_BOX["Query API"]
+        APIGW["API Gateway<br/>(REST, stage: v1)"]
+        LAPI["Lambda API<br/>nodes / outages / dispatch_log"]
+    end
+
+    subgraph WEB_BOX["Web Dashboard"]
+        S3WEB["S3 Static Site<br/>PowerGrid Demo Console"]
+    end
+
+    subgraph DATA["Data Layer"]
+        RDS[("Amazon RDS PostgreSQL<br/>nodes / outage_events / dispatch_log")]
+    end
+
+    subgraph EXT_RA["ResourceAllocation Account (other team)"]
+        XSQS["SQS<br/>resource-events-powergrid-completed"]
+    end
+
+    subgraph EXT["External Services (other teams)"]
+        INC["IncidentImpactZone<br/>GET active impact zones"]
+        PCASE["PriorityCase Service<br/>POST case report"]
+    end
+
+    SIM -- "MQTT publish" --> IOTCORE
+    IOTCORE --> RULE
+    RULE -- "invoke" --> LING
+    LING -- "UPSERT / resolve" --> RDS
+    LING -- "publish NodeStatusChanged" --> SNS_STATUS
+
+    EBS -- "trigger" --> LDET
+    LDET -- "transition states<br/>insert outage_event" --> RDS
+    LDET -- "publish OutageConfirmed" --> SNS
+    LDET -- "publish NodeStatusChanged" --> SNS_STATUS
+
+    SNS -- "subscribe" --> SQSD
+    SQSD -- "poll" --> LDIS
+    SQSD -. "max receive exceeded" .-> DLQ
+    LDIS -- "GET zones" --> INC
+    LDIS -- "POST signed report" --> PCASE
+    LDIS -- "UPDATE WHERE version=$v" --> RDS
+
+    XSQS -. "Event Source Mapping<br/>(cross-account poll)" .-> LCON
+    LCON -- "close outage / reset node" --> RDS
+
+    USER -- "HTTPS" --> S3WEB
+    S3WEB -- "fetch /v1/*" --> APIGW
+    APIGW -- "AWS_PROXY" --> LAPI
+    LAPI -- "SELECT" --> RDS
+
+    classDef aws fill:#FF9900,stroke:#222,color:#000;
+    classDef lambda fill:#F58536,stroke:#222,color:#000;
+    classDef store fill:#3B48CC,stroke:#222,color:#fff;
+    classDef ext fill:#888,stroke:#222,color:#fff;
+    classDef client fill:#2E7D32,stroke:#222,color:#fff;
+
+    class IOTCORE,RULE,EBS,SNS,SNS_STATUS,SQSD,DLQ,APIGW,S3WEB aws;
+    class LING,LDET,LDIS,LCON,LAPI lambda;
+    class RDS store;
+    class INC,PCASE,XSQS ext;
+    class SIM,USER client;
